@@ -3,7 +3,7 @@ from openpyxl import load_workbook
 from openpyxl.cell.cell import Cell
 from openpyxl.worksheet.worksheet import Worksheet
 
-from typing import Any, Union
+from typing import Any, Union, List, Dict, Tuple
 
 
 def get_sheet_from_excel(filename: Path, sheet_name: str) -> Worksheet:
@@ -17,7 +17,7 @@ def get_sheet_from_excel(filename: Path, sheet_name: str) -> Worksheet:
     Returns:
     Worksheet: The worksheet object
     """
-    wb = load_workbook(filename)
+    wb = load_workbook(filename, data_only=True)
     return wb[sheet_name]
 
 
@@ -127,9 +127,9 @@ def process_hierarchical_table(ws: Worksheet) -> dict[str, Any]:
     # Process each row into the hierarchical structure
     for row in ws.iter_rows(min_row=2, values_only=False):
         level = (
-            len(serialize_value(row[0])))
+            len(serialize_value(row[0]))
             - len(serialize_value(row[0])).lstrip()
-         // num_leading_space_per_level
+        ) // num_leading_space_per_level
         label = serialize_value(row[0]).strip()
         data_cells = row[1:]
 
@@ -140,3 +140,120 @@ def process_hierarchical_table(ws: Worksheet) -> dict[str, Any]:
             processed_table = add_data(processed_table, nodes, col_headers, data_cells)
 
     return remove_none_key_value_pairs(processed_table)
+
+def is_header_cell(cell: Cell) -> bool:
+    """
+    Check if a cell has header style (specific background color and top+side borders).
+    """
+    has_header_fill = (
+        (cell.fill.bgColor.type == 'rgb' and cell.fill.bgColor.value == 'FF002060') or 
+        (cell.fill.bgColor.type == 'indexed' and cell.fill.bgColor.value == 64)
+    )
+    has_borders = cell.border.top.style and (cell.border.left.style or cell.border.right.style)
+    return has_header_fill and has_borders
+
+def has_right_border(cell: Cell) -> bool:
+    """
+    Check if a cell has right border.
+    """
+    return cell.border.right.style is not None
+
+def has_bottom_right_borders(cell: Cell) -> bool:
+    """
+    Check if a cell has bottom and right borders.
+    """
+    return cell.border.bottom.style is not None and cell.border.right.style is not None
+
+def is_top_left_cell(cell: Cell, ws: Worksheet) -> bool:
+    """
+    Check if a cell is the top-left cell of a table based on defined rules.
+    """
+    # if cell.value is None and not has_header_style(cell):
+    #     return False
+    # if cell.row == 1 or cell.column == 1:
+    #     return True
+    if is_header_cell(cell):
+        return True
+    if is_header_cell(cell) and \
+       (cell.row-1 > 0 and not is_header_cell(ws.cell(row=cell.row-1, column=cell.column))) and \
+       (cell.column-1 > 0 and not is_header_cell(ws.cell(row=cell.row, column=cell.column-1))):
+        return True
+    return False
+
+def is_top_right_cell(cell: Cell, ws: Worksheet) -> bool:
+    """
+    Check if a cell is the top-right cell of a table based on defined rules.
+    """
+    if cell.value is None and not is_header_cell(cell):
+        return False
+    if cell.column == ws.max_column:
+        return True
+    if is_header_cell(cell) and not is_header_cell(ws.cell(row=cell.row, column=cell.column+1)):
+        return True
+    return False
+
+def is_bottom_right_cell(cell: Cell, ws: Worksheet) -> bool:
+    """
+    Check if a cell is the bottom-right cell of a table based on defined rules.
+    """
+    if cell.value is None and not has_bottom_right_borders(cell):
+        return False
+    if cell.row == ws.max_row and cell.column == ws.max_column:
+        return True
+    if has_bottom_right_borders(cell) and \
+       (cell.row+1 < ws.max_row and not has_right_border(ws.cell(row=cell.row+1, column=cell.column))) and \
+       (cell.column+1 < ws.max_column and not has_bottom_right_borders(ws.cell(row=cell.row, column=cell.column+1))):
+        return True
+    return False
+
+def identify_tables(ws: Worksheet) -> list[tuple[Cell, Cell]]:
+    """
+    Identify the start and end cells of tables in the worksheet using content and style rules.
+    """
+    tables = []
+    start_cell = None
+    bottom_cell = None
+    for row in ws.iter_rows():
+        for cell in row:
+            if bottom_cell and cell.row <= bottom_cell.row and cell.column <= bottom_cell.column:
+                continue
+
+            if not start_cell and is_top_left_cell(cell, ws):
+                start_cell = cell
+
+            if start_cell:
+                # Find top-right cell
+                if is_top_right_cell(cell, ws):
+                    top_right_cell = cell
+
+                    # Find bottom-right cell
+                    for bottom_row in ws.iter_rows(min_row=start_cell.row, min_col=top_right_cell.column, max_col=top_right_cell.column):
+                        for bottom_cell in bottom_row:
+                            if is_bottom_right_cell(bottom_cell, ws):
+                                bottom_right_cell = bottom_cell
+                                tables.append((start_cell, bottom_right_cell))
+                                print(f"Found table from {start_cell.coordinate} to {bottom_right_cell.coordinate}")
+                                start_cell = None
+                                break
+                        if not start_cell:
+                            break
+
+    return tables
+
+def process_tables(ws: Worksheet) -> List[List[Dict[str, Union[str, float, int]]]]:
+    """
+    Process all tables in the worksheet.
+    Returns a list of tables, where each table is a list of dictionaries.
+    """
+    tables = []
+    table_ranges = identify_tables(ws)
+    for start_cell, end_cell in table_ranges:
+        headers = [serialize_value(cell) for cell in ws[start_cell.row][start_cell.column-1:end_cell.column]]
+        records = []
+        for row in ws.iter_rows(min_row=start_cell.row + 1, max_row=end_cell.row, min_col=start_cell.column, max_col=end_cell.column):
+            values = [serialize_value(cell) for cell in row]
+            record = dict(zip(headers, values))
+            records.append(remove_none_key_value_pairs(record))
+        tables.append(records)
+    
+    return tables
