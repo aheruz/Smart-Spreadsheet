@@ -1,7 +1,7 @@
-from abc import ABC, abstractmethod
+from abc import ABC
+from openpyxl.cell import Cell
 from openpyxl.worksheet.worksheet import Worksheet
 from typing import Any, Union, List, Dict
-from abc import ABC, abstractmethod
 
 class SheetProcessor(ABC):
     """
@@ -17,9 +17,9 @@ class SheetProcessor(ABC):
         """
         self.sheet = sheet
 
-    def process_simple_table(self) -> List[Dict[str, Union[str, float, int]]]:
+    def process_simple_table(self, start: Cell, end: Cell) -> List[Dict[str, Union[str, float, int]]]:
         """
-        Handles a simple spreadsheet which has one table starting from the top left corner
+        Handles a simple spreadsheet table within the specified boundary.
         Its first row is its header and the following rows are data records.
         Example:
         | Month    | Savings |
@@ -28,12 +28,16 @@ class SheetProcessor(ABC):
         | February | $80     |
         | March    | $420    |
 
+        Args:
+            start (Cell): The top-left cell of the table.
+            end (Cell): The bottom-right cell of the table.
+
         Returns:
             List[Dict[str, Union[str, float, int]]]: List of records as dictionaries.
         """
-        headers = [self._serialize_value(cell) for cell in self.sheet[1]]
+        headers = [self._serialize_value(cell) for cell in self.sheet[start.row][start.column-1:end.column]]
         records = []
-        for row in self.sheet.iter_rows(min_row=2):
+        for row in self.sheet.iter_rows(min_row=start.row + 1, max_row=end.row, min_col=start.column, max_col=end.column):
             values = [self._serialize_value(cell) for cell in row]
             record = dict(zip(headers, values))
             records.append(self._remove_none_key_value_pairs(record))
