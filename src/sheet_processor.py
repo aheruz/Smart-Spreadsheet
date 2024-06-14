@@ -43,10 +43,10 @@ class SheetProcessor(ABC):
             records.append(self._remove_none_key_value_pairs(record))
         return records
 
-    def process_hierarchical_table(self) -> Dict[str, Any]:
+    def process_hierarchical_table(self, start: Cell, end: Cell) -> Dict[str, Any]:
         """
-        Handles a spreadsheet which has one table starting from the top left corner
-        Its top left cell is empty. Its first row and first column are its headers.
+        Handles a spreadsheet which has one table starting from the specified boundary.
+        Its first row and first column are its headers.
         Its first column has hierarchical structural represented by the number of leading spaces.
         Some rows represents a category where the data cells are empty. Other rows represents actual data where data can be found in the data cells.
         Example:
@@ -63,11 +63,26 @@ class SheetProcessor(ABC):
         |   Total Current Assets at Inc. and Australia |$      1,060,282.76 |$      1,070,307.20 |$         793,854.94|
         |Total Assets                                  |$      1,060,282.76 |$      1,070,307.20 |$         793,854.94|
 
+        Args:
+            start (Cell): The top-left cell of the table.
+            end (Cell): The bottom-right cell of the table.
+
         Returns:
             Dict[str, Any]: Nested dictionary representing the hierarchical table.
         """
-        col_headers = [self._serialize_value(e) for e in self.sheet[1][1:]]
-        row_headers = [self._serialize_value(cell) for cell in self.sheet.iter_cols(min_col=1, max_col=1, values_only=False)[0][1:]]
+        # Extract column headers
+        column_range = self.sheet[start.row][start.column:end.column]
+        col_headers = [self._serialize_value(cell) for cell in column_range]
+        # Extract row headers
+        row_iterator = self.sheet.iter_cols(
+            min_col=start.column, 
+            max_col=start.column, 
+            min_row=start.row + 1, 
+            max_row=end.row, 
+            values_only=False
+        )
+        row_headers = [self._serialize_value(cell) for cell in list(row_iterator)[0]]
+
         num_leading_space_per_level = self._calculate_num_leading_space_per_level(row_headers)
         if num_leading_space_per_level == 0:
             num_leading_space_per_level = 1
@@ -75,7 +90,7 @@ class SheetProcessor(ABC):
         processed_table = {}
         nodes = []
 
-        for row in self.sheet.iter_rows(min_row=2, values_only=False):
+        for row in row_iterator:
             level = (len(self._serialize_value(row[0])) - len(self._serialize_value(row[0]).lstrip())) // num_leading_space_per_level
             label = self._serialize_value(row[0]).strip()
             data_cells = row[1:]
@@ -159,3 +174,4 @@ class SheetProcessor(ABC):
 
         current_level[nodes[-1]] = dict(zip(col_headers, [self._serialize_value(d) for d in data_cells]))
         return processed_table
+

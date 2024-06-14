@@ -60,9 +60,24 @@ class TableProcessor(SheetProcessor):
         tables = []
         table_ranges = self.identify_tables()
         for start_cell, end_cell in table_ranges:
-            table = self.process_simple_table(start_cell, end_cell)
+            table = self._process_table_based_on_cell_value(start_cell, end_cell)
             tables.append(table)
         return tables
+    
+    def _process_table_based_on_cell_value(self, start_cell: Cell, end_cell: Cell) -> Dict[str, Any]:
+        """
+        Processes the table based on the value of the start cell.
+
+        Args:
+            start_cell: The starting cell of the table.
+            end_cell: The ending cell of the table.
+
+        Returns:
+            The processed table.
+        """
+        if start_cell.value is None:
+            return self.process_hierarchical_table(start_cell, end_cell)
+        return self.process_simple_table(start_cell, end_cell)
 
     def _is_header_cell(self, cell: Cell) -> bool:
         """
