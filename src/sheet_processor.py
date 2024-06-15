@@ -1,6 +1,7 @@
 from abc import ABC
 from openpyxl.cell import Cell
 from openpyxl.worksheet.worksheet import Worksheet
+from openpyxl.styles.numbers import FORMAT_GENERAL
 from typing import Any, Union, List, Dict
 
 class SheetProcessor(ABC):
@@ -35,12 +36,13 @@ class SheetProcessor(ABC):
         Returns:
             List[Dict[str, Union[str, float, int]]]: List of records as dictionaries.
         """
-        headers = [self._serialize_value(cell) for cell in self.sheet[start.row][start.column-1:end.column]]
+        headers = [self._format_value(cell) for cell in self.sheet[start.row][start.column-1:end.column]]
         records = []
         for row in self.sheet.iter_rows(min_row=start.row + 1, max_row=end.row, min_col=start.column, max_col=end.column):
-            values = [self._serialize_value(cell) for cell in row]
+            values = [self._format_value(cell) for cell in row]
             record = dict(zip(headers, values))
-            records.append(self._remove_none_key_value_pairs(record))
+            if any(value != '' for value in values):
+                records.append(self._remove_none_key_value_pairs(record))
         return records
 
     def process_hierarchical_table(self, start: Cell, end: Cell) -> Dict[str, Any]:
@@ -72,16 +74,11 @@ class SheetProcessor(ABC):
         """
         # Extract column headers
         column_range = self.sheet[start.row][start.column:end.column]
-        col_headers = [self._serialize_value(cell) for cell in column_range]
+        col_headers = [self._format_value(cell) for cell in column_range]
         # Extract row headers
-        row_iterator = self.sheet.iter_cols(
-            min_col=start.column, 
-            max_col=start.column, 
-            min_row=start.row + 1, 
-            max_row=end.row, 
-            values_only=False
-        )
-        row_headers = [self._serialize_value(cell) for cell in list(row_iterator)[0]]
+        row_headers: list[str] = []
+        for column in self.sheet.iter_cols(min_col=start.column, max_col=start.column, min_row=start.row + 1, max_row=end.row, values_only=False):
+            row_headers = [self._format_value(cell) for cell in column]
 
         num_leading_space_per_level = self._calculate_num_leading_space_per_level(row_headers)
         if num_leading_space_per_level == 0:
@@ -90,9 +87,17 @@ class SheetProcessor(ABC):
         processed_table = {}
         nodes = []
 
+        row_iterator = self.sheet.iter_rows(
+            min_row=start.row + 1,
+            max_row=end.row, 
+            min_col=start.column, 
+            max_col=end.column, 
+            values_only=False
+        )
+        # Process each row into the hierarchical structure
         for row in row_iterator:
-            level = (len(self._serialize_value(row[0])) - len(self._serialize_value(row[0]).lstrip())) // num_leading_space_per_level
-            label = self._serialize_value(row[0]).strip()
+            level = (len(self._format_value(row[0])) - len(self._format_value(row[0]).lstrip())) // num_leading_space_per_level
+            label = self._format_value(row[0]).strip()
             data_cells = row[1:]
             nodes = nodes[:level]
             nodes.append(label)
@@ -103,18 +108,24 @@ class SheetProcessor(ABC):
         return self._remove_none_key_value_pairs(processed_table)
 
     @staticmethod
-    def _serialize_value(cell) -> str:
+    def _format_value(cell) -> str:
         """
-        Serialize the cell value to a string.
+        Serialize and format the cell value to a string.
 
         Args:
-            cell: The cell to serialize.
+            cell: The cell to serialize and format.
 
         Returns:
-            str: The serialized value.
+            str: The serialized and formatted value.
         """
         value = cell.value
-        return str(value)
+        if value is None:
+            return ''
+
+        if cell.number_format == FORMAT_GENERAL:
+            return f"{value}"
+        else:
+            return f"{value} (cell format: {cell.number_format})"
 
     @staticmethod
     def _remove_none_key_value_pairs(d: dict) -> dict:
@@ -127,8 +138,7 @@ class SheetProcessor(ABC):
         Returns:
             dict: A new dictionary with None key-value pairs removed.
         """
-        return {key: value for key, value in d.items() if not (key is None and value is None)}
-
+        return {key: value for key, value in d.items() if key or value}
     @staticmethod
     def _calculate_num_leading_space_per_level(row_headers: List[str]) -> int:
         """
@@ -172,6 +182,6 @@ class SheetProcessor(ABC):
                 current_level[node] = {}
             current_level = current_level[node]
 
-        current_level[nodes[-1]] = dict(zip(col_headers, [self._serialize_value(d) for d in data_cells]))
+        current_level[nodes[-1]] = dict(zip(col_headers, [self._format_value(d) for d in data_cells]))
         return processed_table
 
