@@ -1,5 +1,8 @@
+import json
 import os
+from pathlib import Path
 from werkzeug.utils import secure_filename
+from typing import List
 
 class FileUploadService:
     UPLOAD_FOLDER = 'storage/'
@@ -19,5 +22,25 @@ class FileUploadService:
         filename = secure_filename(file.filename)
         filepath = os.path.join(self.UPLOAD_FOLDER, filename)
         file.save(filepath)
+
+        return filepath
+
+    def save_processed_data(self, data: List, filename: str):
+        # Save the processed data to a file
+        if not data:
+            raise ValueError("No data provided")
+        if not filename:
+            raise ValueError("No filename provided")
+
+        # Secure the filename
+        filename = Path(filename).stem
+        filename = secure_filename(f"{filename}.json")
+        filepath = os.path.join(self.UPLOAD_FOLDER, filename)
+
+        try:
+            with open(filepath, 'w') as file:
+                file.write(json.dumps(data))
+        except Exception as e:
+            raise ValueError(f"Error saving processed data: {e}")
 
         return filepath

@@ -15,15 +15,17 @@ class UploadController:
             return jsonify({"error": "No file part"}), 400
         file = request.files['file']
         try:
+            # Storage the file
             filepath = self.file_upload_service.save_file(file)
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
-        # Process the uploaded file
+        # Process the file
         excel_file = ExcelFile(Path(filepath))
         sheet = excel_file.get_sheet('Analysis Output')
         table_processor = TableProcessor(sheet)
         all_tables_data = table_processor.process_tables()
-        
+        # Save the processed data
+        self.file_upload_service.save_processed_data(all_tables_data, file.filename)
         return jsonify(all_tables_data)
 
     def __call__(self):
