@@ -18,7 +18,7 @@ class TableProcessor(SheetProcessor):
         """
         super().__init__(sheet)
 
-    def identify_tables(self) -> List[Tuple[Cell, Cell]]:
+    def _identify_tables(self) -> List[Tuple[Cell, Cell]]:
         """
         Identify the start and end cells of tables in the worksheet.
 
@@ -58,7 +58,7 @@ class TableProcessor(SheetProcessor):
             List[List[Dict[str, Union[str, float, int]]]]: List of tables, each table is a list of records as dictionaries.
         """
         tables = []
-        table_ranges = self.identify_tables()
+        table_ranges = self._identify_tables()
         for start_cell, end_cell in table_ranges:
             table = self._process_table_based_on_cell_value(start_cell, end_cell)
             tables.append(table)
