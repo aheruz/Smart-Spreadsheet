@@ -1,13 +1,15 @@
+import json
+from flask import jsonify
 from pathlib import Path
 from src.table_processor import TableProcessor
 from src.excel_file import ExcelFile
 
-filename = Path('tests/example_2.xlsx')
-sheet_name = 'Analysis Output'
-
-excel_file = ExcelFile(filename)
-sheet = excel_file.get_sheet(sheet_name)
-# For identifying and processing all tables
+# Process the uploaded file
+excel_file = ExcelFile(Path('tests/example_2.xlsx'))
+sheet = excel_file.get_sheet('Analysis Output')
 table_processor = TableProcessor(sheet)
 all_tables_data = table_processor.process_tables()
-print("All Tables Data:", all_tables_data)
+# save results in json
+with open('results.json', 'w') as f:
+    json.dump(all_tables_data, f)
+print(all_tables_data)

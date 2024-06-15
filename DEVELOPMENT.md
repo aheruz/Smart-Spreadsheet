@@ -160,3 +160,22 @@
 2. **Documentation**:
    Update the `README.md` with setup and usage instructions.
 
+### Deploy
+1. Run the Flask application:
+   ```bash
+   python app.py
+   ```
+
+2. Test the endpoint using curl or Postman:
+    ```bash
+    curl -F "file=@tests/example_0.xlsx" http://127.0.0.1:5000/upload
+    ```
+
+### Run tests
+1. Run the tests:
+   ```bash
+   python -m unittest discover -s tests -p '*_test.py'
+   ```
+
+## TODO
+- [ ] Handle column combination on headers _(eg. `Portfolio Breakdown [USD]` in example_0.xlsx)_
