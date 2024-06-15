@@ -36,7 +36,7 @@ class SheetProcessor(ABC):
         Returns:
             List[Dict[str, Union[str, float, int]]]: List of records as dictionaries.
         """
-        headers = [self._format_value(cell) for cell in self.sheet[start.row][start.column-1:end.column]]
+        headers = [self._serialize_value(cell) for cell in self.sheet[start.row][start.column-1:end.column]]
         records = []
         for row in self.sheet.iter_rows(min_row=start.row + 1, max_row=end.row, min_col=start.column, max_col=end.column):
             values = [self._format_value(cell) for cell in row]
@@ -74,7 +74,7 @@ class SheetProcessor(ABC):
         """
         # Extract column headers
         column_range = self.sheet[start.row][start.column:end.column]
-        col_headers = [self._format_value(cell) for cell in column_range]
+        col_headers = [self._serialize_value(cell) for cell in column_range]
         # Extract row headers
         row_headers: list[str] = []
         for column in self.sheet.iter_cols(min_col=start.column, max_col=start.column, min_row=start.row + 1, max_row=end.row, values_only=False):
@@ -96,8 +96,8 @@ class SheetProcessor(ABC):
         )
         # Process each row into the hierarchical structure
         for row in row_iterator:
-            level = (len(self._format_value(row[0])) - len(self._format_value(row[0]).lstrip())) // num_leading_space_per_level
-            label = self._format_value(row[0]).strip()
+            level = (len(self._serialize_value(row[0])) - len(self._serialize_value(row[0]).lstrip())) // num_leading_space_per_level
+            label = self._serialize_value(row[0]).strip()
             data_cells = row[1:]
             nodes = nodes[:level]
             nodes.append(label)
@@ -107,8 +107,7 @@ class SheetProcessor(ABC):
 
         return self._remove_none_key_value_pairs(processed_table)
 
-    @staticmethod
-    def _format_value(cell) -> str:
+    def _format_value(self, cell) -> str:
         """
         Serialize and format the cell value to a string.
 
@@ -118,14 +117,27 @@ class SheetProcessor(ABC):
         Returns:
             str: The serialized and formatted value.
         """
-        value = cell.value
-        if value is None:
-            return ''
+        value = self._serialize_value(cell)
 
         if cell.number_format == FORMAT_GENERAL:
             return f"{value}"
+        elif value:
+            return f"{value} || format:{cell.number_format})"
         else:
-            return f"{value} (cell format: {cell.number_format})"
+            return value
+
+    @staticmethod
+    def _serialize_value(cell) -> str:
+        """
+        Serialize the cell value to a string.
+
+        Args:
+            cell: The cell to serialize.
+
+        Returns:
+            str: The serialized value.
+        """
+        return f"{cell.value}" if cell.value is not None else ''
 
     @staticmethod
     def _remove_none_key_value_pairs(d: dict) -> dict:
