@@ -21,7 +21,11 @@ class FileUploadService:
         # Save the file to the upload folder
         filename = secure_filename(file.filename)
         filepath = os.path.join(self.UPLOAD_FOLDER, filename)
-        file.save(filepath)
+
+        try:
+            file.save(filepath)
+        except Exception as e:
+            raise ValueError(f"Error saving file: {e}")
 
         return filepath
 
