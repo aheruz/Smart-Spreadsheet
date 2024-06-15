@@ -1,8 +1,8 @@
 import unittest
 from pathlib import Path
 from openpyxl import load_workbook
-from src.table_processor import TableProcessor
-from src.excel_file import ExcelFile
+from app.table_processor import TableProcessor
+from app.excel_file import ExcelFile
 import json
 
 class TestTableProcessor(unittest.TestCase):

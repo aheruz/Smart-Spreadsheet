@@ -2,8 +2,8 @@ import json
 import os
 from flask import jsonify
 from pathlib import Path
-from src.table_processor import TableProcessor
-from src.excel_file import ExcelFile
+from app.table_processor import TableProcessor
+from app.excel_file import ExcelFile
 
 os.environ['PYTHONPATH'] = os.path.dirname(os.path.abspath(__file__))
 # Process the uploaded file

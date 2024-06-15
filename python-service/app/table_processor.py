@@ -1,7 +1,7 @@
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.cell import Cell
 from typing import Any, Union, List, Dict, Tuple
-from src.sheet_processor import SheetProcessor
+from app.sheet_processor import SheetProcessor
 
 class TableProcessor(SheetProcessor):
     """
