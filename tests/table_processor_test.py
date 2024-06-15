@@ -3,6 +3,7 @@ from pathlib import Path
 from openpyxl import load_workbook
 from src.table_processor import TableProcessor
 from src.excel_file import ExcelFile
+import json
 
 class TestTableProcessor(unittest.TestCase):
     def setUp(self):
@@ -15,22 +16,36 @@ class TestTableProcessor(unittest.TestCase):
         excel_file = ExcelFile(self.example_0_path)
         sheet = excel_file.get_sheet('Analysis Output')
         table_processor = TableProcessor(sheet)
-        tables = table_processor.identify_tables()
-        self.assertEqual(len(tables), 8, "example_0.xlsx should generate 8 tables")
+        tables = table_processor.process_tables()
+
+        with open('tests/example_0.json', 'r') as f:
+            expected_tables = json.load(f)
+        self.assertEqual(len(tables), 8, f"{self.example_0_path.name} should generate 8 tables, got {len(tables)}")
+        self.assertEqual(tables, expected_tables, f"{self.example_0_path.name} should match the expected JSON output")
 
     def test_example_1(self):
         excel_file = ExcelFile(self.example_1_path)
         sheet = excel_file.get_sheet('Analysis Output')
         table_processor = TableProcessor(sheet)
-        tables = table_processor.identify_tables()
-        self.assertEqual(len(tables), 4, "example_1.xlsx should generate 4 tables")
+        tables = table_processor.process_tables()
+
+        with open('tests/example_1.json', 'r') as f:
+            expected_tables = json.load(f)
+
+        self.assertEqual(len(tables), 4, f"{self.example_1_path.name} should generate 4 tables, got {len(tables)}")
+        self.assertEqual(tables, expected_tables, f"{self.example_1_path.name} should match the expected JSON output")
 
     def test_example_2(self):
         excel_file = ExcelFile(self.example_2_path)
         sheet = excel_file.get_sheet('Analysis Output')
         table_processor = TableProcessor(sheet)
-        tables = table_processor.identify_tables()
-        self.assertEqual(len(tables), 4, "example_2.xlsx should generate 4 tables")
+        tables = table_processor.process_tables()
+
+        with open('tests/example_2.json', 'r') as f:
+            expected_tables = json.load(f)
+
+        self.assertEqual(len(tables), 4, f"{self.example_2_path.name} should generate 4 tables, got {len(tables)}")
+        self.assertEqual(tables, expected_tables, f"{self.example_2_path.name} should match the expected JSON output")
 
 if __name__ == '__main__':
     unittest.main()
