@@ -14,7 +14,7 @@ class OpenAiService:
 
     def __init__(self):
         self._client = OpenAI()
-        self._assistant = self._create_or_get_assistant()
+        self._assistant = self._get_or_create_assistant()
         self._vector_store = self._create_or_get_vector_store()
 
     def upload_file(self, filepath: str) -> str:
@@ -39,9 +39,11 @@ class OpenAiService:
             return file_batch.status
         except Exception as e:
             return "Failed to upload file"
+    
+    def get_or_create_assistant(self) -> str:
+        return self._get_or_create_assistant().id
 
-
-    def _create_or_get_assistant(self) -> Assistant:
+    def _get_or_create_assistant(self) -> Assistant:
         """
         Retrieve the assistant if it exists or create a new one.
         """
