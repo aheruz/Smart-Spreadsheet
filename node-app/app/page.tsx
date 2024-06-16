@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ClientMessage } from './actions';
 import { useActions } from 'ai/rsc';
+import ChatInput from './components/chat.input';
 
 export default function Home() {
   const [input, setInput] = useState('');
@@ -26,28 +27,10 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col-reverse">
-      <div className="flex flex-row gap-2 p-2 bg-zinc-100 w-full">
-        <input
-          className="bg-zinc-100 w-full p-2 outline-none"
-          value={input}
-          onChange={event => setInput(event.target.value)}
-          placeholder="Ask a question"
-          onKeyDown={event => {
-            if (event.key === 'Enter') {
-              handleSubmission();
-            }
-          }}
-        />
-        <button
-          className="p-2 bg-zinc-900 text-zinc-100 rounded-md"
-          onClick={handleSubmission}
-        >
-          Send
-        </button>
-      </div>
-
-      <div className="flex flex-col h-[calc(100dvh-56px)] overflow-y-scroll">
+    <div className="flex flex-col-reverse mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+      
+      <ChatInput input={input} setInput={setInput} handleSubmission={handleSubmission} />
+      <div className="flex flex-col p-0 h-[calc(100dvh-56px)]">
         <div>
           {messages.map(message => (
             <div key={message.id} className="flex flex-col gap-1 border-b p-2">
