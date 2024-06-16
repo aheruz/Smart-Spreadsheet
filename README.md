@@ -1,66 +1,45 @@
-# Smart Spreadsheet
+# README
 
-## Introduction
+## Project Overview
 
-As a **Founding Senior Engineer** at Capix you will lead the the development of the Company’s technical vision and strategy, oversee all the technological development, and help develop and implement the product. This is a very critical role. It is paramount that you are a master of engineering able to ship great software fast. We’re looking for the 10Xers and this project helps us evaluate if you can get the job done. 
+This repository contains two main projects:
 
-The project is open-ended. There is no single right answer, and you have complete creative freedom to solve the problem in whatever way you want.
+1. **Python Service**: Handles the core logic for creating assistants, uploading files, and attaching files to the assistants. It processes Excel files, generates JSON, and uploads this JSON to the vector database provided by OpenAI.
 
-## Scenario
+2. **Node Application**: Acts as the front-end, managing chat functions. Users can upload files through the UI, but these requests are forwarded to the Python service, which handles the file processing and data management.
 
-You are an engineer leading product development at Capix. We just received a request from a key client to build a system that can answer questions from Excel files. The timeline is tight. We have two days to develop this feature. How should we deliver this to our client?
+## Requirements
 
+Please refer to [REQUIREMENTS.md](REQUIREMENTS.md) for detailed information on the initial goals of the project.
 
-In the repo, there are example Excel files that the client has shared with us. There are also some functions we developed to give you a head start, which you may or may not choose to use.  
+## Setup Instructions
 
-## Goals
+### Environment Setup
+Both services require specific environment variables to be set up. Below are the steps to configure the environment:
 
-1. The algorithm should be able to parse and serialize each individual table in the Excel sheet `example_0.xlsx`.
-2. An AI chat function that should be able to answer basic question about the excel sheet, e.g. "What is the Total Cash and Cash Equivalent of Nov. 2023?" (No UI is needed)
-3. Let's broaden the functionality of the algorithm. Can you make it parse `example_1.xlsx` and `example_2.xlsx`?
-4. Let's make the AI more intelligent. Can you make it answer questions that need to be inferred like "What is the Total Cash and Cash Equivalent of Oct. AND Nov. of 2023 combined?"
-5. Now that we have a Smart Spreadsheet AI. Let's deploy it for our user to use!
+1. **Python Service**:
+   - Set up the `.env.local` for the Python service.
 
-## Challenges to Consider
+2. **Node Application**:
+   - Set up the `.env.local` for the Node application.
+   - Ensure that the `APP_API_URL` points to the Python service.
 
-1. Reducing the risk of hallucinations. LLMs can hallucinate. How do you reduce the chance of hallucination to reach 100% accurate answer every time? How do you measure the accuracy programmatically?
-2. Handle large spreadsheets. Excel sheets can be very large. What if the sheet exceeds the limit of the context window? Or how can we design the solution so that we can send only important parts of the spreadsheet to the model?
-3. Enable citations. How can we verify if the model used the right information to answer the question? Can we add citation to the information source?
-4. Enable numerical calculation and inferences. How can we enable model to do mathematical calculations accurately?
+### Running the Services
 
-## FAQ
-* **How long do I have to solve the problem?** 
+1. **Python Service**:
+   - Navigate to the Python service directory.
+   - Run the service using the appropriate command (e.g., `python app.py`).
 
-  * You have two days to sovle the problem. 
+2. **Node Application**:
+   - Navigate to the Node application directory.
+   - Start the application using the appropriate command (e.g., `npm dev`).
 
-* **What tools, tech stack should I use?**
+### Note on Dockerization
 
-  * Whatever tools you want. There are no particular requirements. And yes, you can use ChatGPT or nay other open source model and we encourage it.
+The plan was to dockerize the application for easier deployment, but due to time constraints, this was not completed. Each service has its own deployment instructions, and you need to manually set up the environment variables as described above.
 
-* **Is building a full-fledged frontend required?** 
-  * Would be great, but it's not required. Focus on your strengths.
+## Usage
 
-* **Do I have to achieve all the goals?** 
-
-  * We will be very impressed if you can! Do your best!
-
-* **How to submit?**
-
-  * Please fork the repo, and submit your solution in a branch of your own repo and share the link of your repo with us via email.
-
-## Evaluation Criteria
-
-1. **Functionality**: Ability to parse and serialize tables from provided Excel files, including generalizing the solution to handle multiple examples. The AI should answer both basic questions; advanced generalization and AI inference are considered a bonus.
-
-2. **Problem Solving and Creativity**: Systematic and effective approach to breaking down and addressing each part of the problem. Novel or creative solutions with innovative use of tools and techniques.
-  
-3. **Code Quality and Readability**: Clear, readable, and well-structured code with consistent naming conventions.
-
-4. **Algorithm Design and Efficiency**: Thoughtful and effective algorithm design, considering edge cases and using appropriate data structures. Efficient implementation in terms of time and space complexity.
-
-5. **Deployment and Usability**: Successful deployment of the solution with clear and detailed setup instructions. Consideration of user experience, ensuring the solution is user-friendly and accessible.
-
-## Remarks
-
-We appreicate the time you will devote to this project. We hope you enjoy this exercise!
+- **Uploading Files**: Use the Node application's UI to upload files. These requests will be forwarded to the Python service, which will handle the file processing and data management.
+- **Chat Functions**: The Node application manages chat functions, interfacing with the Python service for backend logic.
 
