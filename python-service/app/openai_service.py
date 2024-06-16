@@ -1,5 +1,9 @@
 import os
+from typing import Optional
 from openai import OpenAI
+from openai.types.beta.vector_store import VectorStore
+from openai.types.beta.assistant import Assistant
+from openai.types import FileObject
 
 class OpenAiService:
     """
@@ -13,16 +17,15 @@ class OpenAiService:
         self._assistant = self._get_assistant() or self._create_assistant()
         self._vector_store = self._get_vector_store() or self._create_vector_store()
 
-    def upload_file(self, filepath):
+    def upload_file(self, filepath: str) -> str:
         """
         Upload a file to the OpenAI API and add it to the vector store
         - If the file is already uploaded, delete it
         - Upload the file
         - Add the file to the vector store
         """
-        # Ready the files for upload to OpenAI
-        file_paths = [filepath]
-        file_streams = [open(path, "rb") for path in file_paths]
+        # Ready the file for upload to OpenAI
+        file_stream = open(filepath, "rb")
 
         # Delete the existing file if it exists
         existing_file = self._get_file_by_name(filepath)
@@ -31,11 +34,15 @@ class OpenAiService:
 
         # Upload the files, and add them to the vector store
         file_batch = self._client.beta.vector_stores.file_batches.upload_and_poll(
-            vector_store_id=self._vector_store.id, files=file_streams
+            vector_store_id=self._vector_store.id, files=[file_stream]
         )
+
+        # Update the assistant to use the new vector store
+        self._assign_vector_to_assistant()
+
         return file_batch.status
     
-    def _get_file_by_name(self, filepath):
+    def _get_file_by_name(self, filepath: str) -> Optional[FileObject]:
         """
         Get the file by name from the OpenAI API
         """
@@ -49,7 +56,7 @@ class OpenAiService:
     def _delete_file(self, id: str):
         self._client.files.delete(id)
     
-    def _create_assistant(self):
+    def _create_assistant(self) -> Assistant:
         """
         Create an assistant with the given name and instructions
         """
@@ -60,7 +67,7 @@ class OpenAiService:
             tools=[{"type": "file_search"}],
         )
 
-    def _get_assistant(self):
+    def _get_assistant(self) -> Optional[Assistant]:
         """
         Get the assistant by name from the OpenAI API
         """
@@ -70,7 +77,7 @@ class OpenAiService:
                 return assistant
         return None
 
-    def _get_vector_store(self):
+    def _get_vector_store(self) -> Optional[VectorStore]:
         """
         Get the vector store by name from the OpenAI API
         """
@@ -82,3 +89,12 @@ class OpenAiService:
     
     def _create_vector_store(self):
         return self._client.beta.vector_stores.create(name=self.VECTOR_STORE_NAME)
+    
+    def _assign_vector_to_assistant(self) -> None:
+        """
+        Update the assistant to to use the new Vector Store
+        """
+        self._assistant = self._client.beta.assistants.update(
+            assistant_id=self._assistant.id,
+            tool_resources={"file_search": {"vector_store_ids": [self._vector_store.id]}},
+        )
