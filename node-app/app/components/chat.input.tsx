@@ -60,6 +60,7 @@ export default function ChatInput({ input, setInput, handleSubmission }: FixedIn
                 <input
                     type="file"
                     id="file-upload"
+                    accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     className="hidden"
                     onChange={handleFileChange}
                 />
