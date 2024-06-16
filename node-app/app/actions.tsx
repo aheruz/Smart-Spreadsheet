@@ -17,9 +17,19 @@ export interface ClientMessage {
   text: ReactNode;
 }
 
-const ASSISTANT_ID = 'asst_kzWqtgVqZi1CVTRveDcrPRAl';
+let ASSISTANT_ID = '';
 let THREAD_ID = '';
 let RUN_ID = '';
+
+/**
+ * Fetch existing assistant id from the server
+ * @improvement move this to a separate file
+ */
+async function fetchAssistantId() {
+  const response = await fetch(process.env.APP_API_URL + '/assistant');
+  const data = await response.json();
+  return data
+}
 
 export async function submitMessage(question: string): Promise<ClientMessage> {
   const statusUIStream = createStreamableUI('thread.init');
@@ -33,7 +43,13 @@ export async function submitMessage(question: string): Promise<ClientMessage> {
 
   let annotations: Citation[] = [];
 
+  // Ensure assistant id is fetched before proceeding
+  if (!ASSISTANT_ID) {
+    ASSISTANT_ID = await fetchAssistantId();
+  }
+  
   (async () => {
+  
     if (THREAD_ID) {
       await openai.beta.threads.messages.create(THREAD_ID, {
         role: 'user',

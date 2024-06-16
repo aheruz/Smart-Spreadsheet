@@ -5,10 +5,13 @@ import loadingGif from '../../public/loading-icon.gif';
 
 import axios from 'axios';
 
+/**
+ * @improvement move FixedInputSectionProps to a separate file
+ */
 interface FixedInputSectionProps {
-  input: string;
-  setInput: (input: string) => void;
-  handleSubmission: () => void;
+    input: string;
+    setInput: (input: string) => void;
+    handleSubmission: () => void;
 }
 
 export default function ChatInput({ input, setInput, handleSubmission }: FixedInputSectionProps) {
@@ -34,7 +37,7 @@ export default function ChatInput({ input, setInput, handleSubmission }: FixedIn
           setIsUploading(true);
           try {
             setUploadStatus('Uploading...');
-            const response = await axios.post('http://127.0.0.1:5000/upload', formData, {
+            const response = await axios.post(`${process.env.APP_API_URL}/upload`, formData, {
               headers: {
                 'Content-Type': 'multipart/form-data',
               },
