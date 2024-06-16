@@ -14,8 +14,8 @@ class OpenAiService:
 
     def __init__(self):
         self._client = OpenAI()
-        self._assistant = self._get_assistant() or self._create_assistant()
-        self._vector_store = self._get_vector_store() or self._create_vector_store()
+        self._assistant = self._create_or_get_assistant()
+        self._vector_store = self._create_or_get_vector_store()
 
     def upload_file(self, filepath: str) -> str:
         """
@@ -24,24 +24,41 @@ class OpenAiService:
         - Upload the file
         - Add the file to the vector store
         """
-        # Ready the file for upload to OpenAI
-        file_stream = open(filepath, "rb")
+        try:
+            # Delete the existing file if it exists
+            existing_file = self._get_file_by_name(filepath)
+            if existing_file:
+                self._delete_file(existing_file.id)
+            # Upload the files, and add them to the vector store
+            with open(filepath, "rb") as file_stream:
+                file_batch = self._client.beta.vector_stores.file_batches.upload_and_poll(
+                    vector_store_id=self._vector_store.id, files=[file_stream]
+                )
+            # Update the assistant to use the new vector store
+            self._assign_vector_to_assistant()
+            return file_batch.status
+        except Exception as e:
+            return "Failed to upload file"
 
-        # Delete the existing file if it exists
-        existing_file = self._get_file_by_name(filepath)
-        if existing_file:
-            self._delete_file(existing_file.id)
 
-        # Upload the files, and add them to the vector store
-        file_batch = self._client.beta.vector_stores.file_batches.upload_and_poll(
-            vector_store_id=self._vector_store.id, files=[file_stream]
-        )
+    def _create_or_get_assistant(self) -> Assistant:
+        """
+        Retrieve the assistant if it exists or create a new one.
+        """
+        assistant = self._get_assistant()
+        if not assistant:
+            assistant = self._create_assistant()
+        return assistant
 
-        # Update the assistant to use the new vector store
-        self._assign_vector_to_assistant()
+    def _create_or_get_vector_store(self) -> VectorStore:
+        """
+        Retrieve the vector store if it exists or create a new one.
+        """
+        vector_store = self._get_vector_store()
+        if not vector_store:
+            vector_store = self._create_vector_store()
+        return vector_store
 
-        return file_batch.status
-    
     def _get_file_by_name(self, filepath: str) -> Optional[FileObject]:
         """
         Get the file by name from the OpenAI API
@@ -62,9 +79,33 @@ class OpenAiService:
         """
         return self._client.beta.assistants.create(
             name=self.ASSISTANT_NAME,
-            instructions="You are an expert financial analyst. Use you knowledge base to answer questions about audited financial statements.",
+            instructions=(
+                "You are CapixAi Analyst Assistant, an expert in financial analysis. "
+                "Your task is to analyze financial data from Excel files and answer questions accurately. "
+                "Use the vector store to retrieve relevant information from the provided files. "
+                "Here are your guidelines:\n\n"
+                "1. **Understand the Context**: Each Excel file contains financial data with columns such as 'Date', "
+                "'Total Cash and Cash Equivalents', 'Accounts Receivable', 'Total Assets', and more. Familiarize yourself "
+                "with the structure of these tables before answering questions.\n\n"
+                "2. **Accurate Data Retrieval**: When answering questions, always refer to the specific cells or sections of the Excel file "
+                "where the relevant data is located. Provide cell references in your answers to ensure transparency.\n\n"
+                "3. **Handle Complex Inquiries**: For questions that require calculations or inferences (e.g., combining data from multiple columns or rows), "
+                "perform the necessary computations and show your work step-by-step. Clearly explain how you arrived at the answer.\n\n"
+                "4. **Minimize Hallucinations**: Base your answers strictly on the data available in the Excel files. If the information is not present or cannot be determined "
+                "from the provided data, state that the data is not available.\n\n"
+                "5. **Enable Citations**: Whenever possible, cite the source of your information by including the cell references or file paths. This helps verify the accuracy of your answers.\n\n"
+                "6. **Structured Responses**: Provide answers in a structured format using Markdown, including any relevant calculations, citations, and explanations. For example:\n\n"
+                "   **Question**: What is the Total Cash and Cash Equivalent of Nov. 2023?\n"
+                "   **Answer**:\n\n"
+                "   **Total Cash and Cash Equivalent of Nov. 2023**\n"
+                "   The Total Cash and Cash Equivalent of Nov. 2023 is **$1,000,000**.\n"
+                "   [Source: example.xlsx, Cell: B5]\n\n"
+                "7. **Error Handling**: If you encounter any issues or the data cannot be retrieved, provide a clear and concise error message.\n\n"
+                "8. **Execute Code for Calculations**: Use the integrated code interpreter to perform any necessary calculations or data processing to answer the questions accurately."
+                "By following these guidelines, ensure that your responses are accurate, transparent, and useful to the user."
+            ),
             model="gpt-4o",
-            tools=[{"type": "file_search"}],
+            tools=[{"type": "file_search"}, {"type": "code_interpreter"}],
         )
 
     def _get_assistant(self) -> Optional[Assistant]:
