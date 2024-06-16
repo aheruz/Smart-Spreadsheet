@@ -26,7 +26,7 @@ class UploadController:
         # Save the processed data
         filepath = self.file_upload_service.save_processed_data(all_tables_data, file.filename)
         file_id = self.openai_service.upload_file(filepath)
-        return jsonify(file_id)
+        return f'File {file.filename} uploaded successfully', 200
 
     def __call__(self):
         return self._upload_bp
