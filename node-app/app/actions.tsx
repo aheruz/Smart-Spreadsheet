@@ -5,6 +5,7 @@ import { createAI, createStreamableUI, createStreamableValue } from 'ai/rsc';
 import { OpenAI } from 'openai';
 import { ReactNode } from 'react';
 import { Message } from './message';
+import { Citation } from './interfaces/citation.interface';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -29,6 +30,8 @@ export async function submitMessage(question: string): Promise<ClientMessage> {
   );
 
   const runQueue = [];
+
+  let annotations: Citation[] = [];
 
   (async () => {
     if (THREAD_ID) {
@@ -69,9 +72,17 @@ export async function submitMessage(question: string): Promise<ClientMessage> {
           } else if (event === 'thread.run.created') {
             RUN_ID = data.id;
           } else if (event === 'thread.message.delta') {
-            data.delta.content?.map(part => {
+            data.delta.content?.map(async part => {
               if (part.type === 'text') {
                 if (part.text) {
+                  if (part.text.value && part.text.annotations) {
+                    // replace value with annotation index
+                    for (let index = 0; index < part.text.annotations.length; index++) {
+                      const annotation = part.text.annotations[index];
+                      part.text.value = part.text.value.replace(annotation.text || '', `[${index}]`);
+                      annotations.push(annotation);
+                    }
+                  }
                   textStream.append(part.text.value as string);
                 }
               }
@@ -83,6 +94,9 @@ export async function submitMessage(question: string): Promise<ClientMessage> {
       }
     }
 
+    // process annotations
+    textStream.append(await processMessageAnnotation(annotations));
+
     statusUIStream.done();
     textStream.done();
   })();
@@ -92,6 +106,17 @@ export async function submitMessage(question: string): Promise<ClientMessage> {
     status: statusUIStream.value,
     text: textUIStream.value,
   };
+}
+
+async function processMessageAnnotation(annotations: Citation[]): Promise<string> {
+  let citations: string[] = [];
+  for (const annotation of annotations) {
+    if (annotation.file_citation?.file_id) {
+      const citedFile = await openai.files.retrieve(annotation.file_citation.file_id);
+      citations.push(`[${annotation.index}] ${annotation.file_citation.quote} from ${citedFile.filename}`);
+    }
+  }
+  return citations.length > 0 ? "\n" + citations.join("\n") : '';
 }
 
 export const AI = createAI({
